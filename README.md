@@ -22,4 +22,4 @@
 
 本题目提供用户历史一个月的查询词与用户的人口属性标签（包括性别、年龄、学历）做为训练数据，要求参赛人员通过机器学习、数据挖掘技术构建分类算法来对新增用户的人口属性进行判定。
 
-项目地址： http://www.datafountain.cn/data/science/player/competition/detail/description/239
+大赛地址： http://www.datafountain.cn/data/science/player/competition/detail/description/239
