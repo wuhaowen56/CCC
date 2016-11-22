@@ -75,12 +75,7 @@ def preprocess(path):
             seg_list = jieba.cut(item)
             for check in seg_list:
                 check = check.encode('utf-8')
-                value = re.compile(r'^[-+]?[0-9]+\.[0-9]+$')
-                value1 = re.compile(r'^[a-zA-Z\d]+$')
-                result = value.match(check)
-                result1 = value1.match(check)
-                if check not in stopwords and single_line[3]!='0'and check.isdigit()!= True and check.isalpha()!= True\
-                        and not result  and not result1:
+                if  single_line[3]!='0':
                     user_word = user_word + ' '+check
         if single_line[3]!='0':
             new_item = [single_line[0],single_line[3],user_word]
@@ -114,12 +109,7 @@ def preprocess1(path):
             seg_list = jieba.cut(item)
             for check in seg_list:
                 check = check.encode('utf-8')
-                value = re.compile(r'^[-+]?[0-9]+\.[0-9]+$')
-                value1 = re.compile(r'^[a-zA-Z\d]+$')
-                result = value.match(check)
-                result1 = value1.match(check)
-                if check not in stopwords and check.isdigit() != True and check.isalpha() != True and not result and not result1:
-                    user_word = user_word + ' ' + check
+                user_word = user_word + ' ' + check
         new_item = [single_line[0], user_word]
         new_table.append(new_item)
     bunch = Bunch(label=[], userid=[], contents=[])
@@ -129,49 +119,49 @@ def preprocess1(path):
         bunch.contents.append(k[1])
     return bunch
 
-# bunch  = preprocess('train_word_bag/user_tag_query.2W.TRAIN')
-# tfidfspace = Bunch( label=bunch.label, userid=bunch.userid, tdm=[], vocabulary={})
-#
-# vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5)
-# transformer = TfidfTransformer()  # 该类会统计每个词语的tf-idf权值
-# # 文本转为词频矩阵,单独保存字典文件
-# tfidfspace.tdm = vectorizer.fit_transform(bunch.contents)
-# tfidfspace.vocabulary = vectorizer.vocabulary_
-#
-# # 创建词袋的持久化
-# space_path = "train_word_bag/tfdifspace_edu_1.dat"  # 词向量空间保存路径
-# writebunchobj(space_path, tfidfspace)
-#
-# print "if-idf词向量空间创建成功！！！"
-#
-# bunch1  = preprocess1('test_word_bag/user_tag_query.2W.TEST')
-# tfidfspace1 = Bunch( label=bunch1.label, userid=bunch1.userid, tdm=[], vocabulary={})
-# vectorizer1 = TfidfVectorizer(vocabulary = vectorizer.vocabulary_)
-# transformer1 = TfidfTransformer( )  # 该类会统计每个词语的tf-idf权值
-# # 文本转为词频矩阵,单独保存字典文件
-# tfidfspace1.tdm = vectorizer1.fit_transform(bunch1.contents)
-#
-# # 创建词袋的持久化
-# space_path = "test_word_bag/tfdifspace_edu_1.dat"  # 词向量空间保存路径
-# writebunchobj(space_path, tfidfspace1)
+def writebunchobj(path, bunchobj):
+    file_obj = open(path, "wb")
+    pickle.dump(bunchobj, file_obj)
+    file_obj.close()
+data_train  = preprocess('train_word_bag/user_tag_query.10W.TRAIN')
+# data_train = readbunchobj('seg_edu_train.txt')
+writebunchobj('seg_edu_train.txt', data_train)
+data_test  = preprocess1('test_word_bag/user_tag_query.10W.TEST')
+writebunchobj('seg_edu_test.txt', data_test)
+# data_test = readbunchobj('seg_edu_test.txt')
+y_train, y_test = data_train.label, data_test.label
+def get_stop_words():
+    result = set()
+    for line in open('stopwords.txt', 'r').readlines():
+        result.add(line.strip())
+    return result
+stop_words = get_stop_words()
+vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5,stop_words=stop_words)
+X_train = vectorizer.fit_transform(data_train.contents)
 
-trainpath = "train_word_bag/tfdifspace_edu_1.dat"
-train_set = readbunchobj(trainpath)
+X_test = vectorizer.transform(data_test.contents)
 
+ch2 = SelectKBest(chi2, k=50000)
+X_train = ch2.fit_transform(X_train, y_train)
+X_test = ch2.transform(X_test)
 
-testpath = "test_word_bag/tfdifspace_edu_1.dat"
-test_set = readbunchobj(testpath)
+# SVM, transform into probability output
+from sklearn.calibration import CalibratedClassifierCV
 
-model = svm.LinearSVC(C=0.5,penalty="l1", dual=False, tol=1e-3)
+clf_ = svm.LinearSVC(C=0.15) #still the best when C=0.2
 
-# model = GradientBoostingClassifier()
+# clf_ = OneVsOneClassifier(svm.LinearSVC(random_state=0,C=0.01,penalty='l1',dual=False))
+clf_SVM = CalibratedClassifierCV(clf_)
 
-model.fit(train_set.tdm, train_set.label)
-predicted = model.predict(test_set.tdm)
+# predict
+clf_SVM.fit(X_train,y_train)
+predicted = clf_SVM.predict(X_test)
 total = len(predicted)
+print total
 rate = 0
-f = open('resoult_edu_8.txt','wb')
-for flabel, file_name, expct_cate in zip(test_set.label, test_set.userid, predicted):
+f = open('resoult_edu_1.txt','wb')
+
+for flabel, file_name, expct_cate in zip(data_test.label, data_test.userid, predicted):
     # print file_name, ": 实际类别:", flabel, " -->预测类别:", expct_cate
     f.write(expct_cate)
     f.write('\n')

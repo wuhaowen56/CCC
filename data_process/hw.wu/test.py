@@ -7,10 +7,10 @@
 # @Software: PyCharm Community Edition
 import csv
 f  = open('test_word_bag/user_tag_query.2W.TEST')
-f1 = open('resoult_age_8.txt')
-f2 = open('resoult_gender_7.txt')
-f3 = open('resoult_edu_8.txt')
-csvfile = file('testResoult_svm_8.csv', 'wb')
+f1 = open('resoult_age_16.txt')
+f2 = open('resoult_gender_16.txt')
+f3 = open('resoult_edu_16.txt')
+csvfile = file('testResoult_svm_20.csv', 'wb')
 
 userid = []
 age = []
